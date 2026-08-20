@@ -1,0 +1,439 @@
+{
+  "name": "06 - AI Lead Qualification",
+  "nodes": [
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ef31da9d-03d1-4583-a193-e066b7da3763",
+              "name": "name",
+              "value": "={{ $json.body.name }}",
+              "type": "string"
+            },
+            {
+              "id": "b414fc3f-d9ba-40ef-a76a-dac0b4e83321",
+              "name": "email",
+              "value": "={{ $json.body.email }}",
+              "type": "string"
+            },
+            {
+              "id": "d104352c-ba49-40c6-a3a4-a18089ec44e6",
+              "name": "budget",
+              "value": "={{ $json.body.budget }}",
+              "type": "string"
+            },
+            {
+              "id": "44ff3554-3bdf-4509-b3c6-760eaf4de0d4",
+              "name": "project",
+              "value": "={{ $json.body.project }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        224,
+        0
+      ],
+      "id": "6ebb53ca-f1ea-4adf-bc1d-6bbed797dece",
+      "name": "Normalize Lead"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/interactions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"gemini-3.5-flash-lite\",\n  \"input\": \"You are qualifying a potential automation client.\\n\\nClient name: {{ $json.name }}\\nBudget USD: {{ $json.budget }}\\nProject: {{ $json.project }}\\n\\nEvaluate this lead based on budget, project clarity, and suitability for automation services.\",\n  \"response_format\": {\n    \"type\": \"text\",\n    \"mime_type\": \"application/json\",\n    \"schema\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"classification\": {\n          \"type\": \"string\",\n          \"enum\": [\"HOT\", \"WARM\", \"COLD\"]\n        },\n        \"score\": {\n          \"type\": \"integer\",\n          \"minimum\": 0,\n          \"maximum\": 100\n        },\n        \"reason\": {\n          \"type\": \"string\"\n        }\n      },\n      \"required\": [\n        \"classification\",\n        \"score\",\n        \"reason\"\n      ]\n    }\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        448,
+        0
+      ],
+      "id": "afcf9b25-3e3a-4e1b-8d78-997c5381c8f4",
+      "name": "Gemini - Qualify Lead",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "pR7MLoJQNSf38Zge",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\n\n// Lấy lại dữ liệu lead từ node Normalize Lead\nconst lead = $('Normalize Lead').first().json;\n\nconst outputStep = data.steps?.find(\n  step => step.type === 'model_output'\n);\n\nconst textPart = outputStep?.content?.find(\n  part => part.type === 'text'\n);\n\nif (!textPart?.text) {\n  throw new Error('Gemini did not return text output');\n}\n\nconst result = JSON.parse(textPart.text);\n\nreturn [\n  {\n    json: {\n      name: lead.name,\n      email: lead.email,\n      budget: lead.budget,\n      project: lead.project,\n\n      classification: result.classification,\n      score: result.score,\n      reason: result.reason,\n\n      createdAt: new Date().toISOString()\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        0
+      ],
+      "id": "28f26f82-1cd8-49a3-8a7e-2417887a372b",
+      "name": "Parse AI Result"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1PpwAsY2Z61ilx95uVCfu5KMp3j3-nqczIXa8Ry1yHfY",
+          "mode": "list",
+          "cachedResultName": "AI Lead Qualification",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1PpwAsY2Z61ilx95uVCfu5KMp3j3-nqczIXa8Ry1yHfY/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Leads",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1PpwAsY2Z61ilx95uVCfu5KMp3j3-nqczIXa8Ry1yHfY/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "createdAt": "={{ $json.createdAt }}",
+            "name": "={{ $json.name }}",
+            "email": "={{ $json.email }}",
+            "budget": "={{ $json.budget }}",
+            "project": "={{ $json.project }}",
+            "classification": "={{ $json.classification }}",
+            "score": "={{ $json.score }}",
+            "reason": "={{ $json.reason }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "createdAt",
+              "displayName": "createdAt",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "name",
+              "displayName": "name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "budget",
+              "displayName": "budget",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "project",
+              "displayName": "project",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "classification",
+              "displayName": "classification",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "score",
+              "displayName": "score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "reason",
+              "displayName": "reason",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1184,
+        96
+      ],
+      "id": "91d1653d-926a-4d76-bfcd-8f587724b842",
+      "name": "Google Sheets - Save Lead",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "b9KF7Fwqla6r7m7n",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "2080669123",
+        "text": "=🔥 HOT LEAD  \nName: {{ $json.name }} \nEmail: {{ $json.email }} \nBudget: ${{ $json.budget }}  \nProject: {{ $json.project }}  \nAI Score: {{ $json.score }}/100  \nReason: {{ $json.reason }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1168,
+        -208
+      ],
+      "id": "a88c2583-f2e1-41b6-adeb-848e4e9c0a1b",
+      "name": "Telegram - Hot Lead Alert",
+      "webhookId": "85fba22b-cd27-4db4-9557-91e178725bb2",
+      "credentials": {
+        "telegramApi": {
+          "id": "EBupEkkn2JQ7aj03",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.classification }}",
+                    "rightValue": "HOT",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "1907b200-e70f-4918-a9cc-fda7a2924aae"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "HOT"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "4e81b83d-cf15-4153-bcdb-63b8d7c00ffa",
+                    "leftValue": "={{ $json.classification }}",
+                    "rightValue": "WARM",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "WARM"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "e56f2b3a-7cef-4ed3-9e97-d27fcbc75e28",
+                    "leftValue": "={{ $json.classification }}",
+                    "rightValue": "COLD",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "COLD"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        896,
+        0
+      ],
+      "id": "e08d42c5-5725-4d2e-ba22-128e8786fb7d",
+      "name": "Route by Classification"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ai-lead",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "fb76e057-3c54-448b-a19b-b3cc00f5017e",
+      "name": "Receive Lead - Webhook",
+      "webhookId": "c26e0b71-4f58-4a1d-9a9f-af34d0fae8d5"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Normalize Lead": {
+      "main": [
+        [
+          {
+            "node": "Gemini - Qualify Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini - Qualify Lead": {
+      "main": [
+        [
+          {
+            "node": "Parse AI Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse AI Result": {
+      "main": [
+        [
+          {
+            "node": "Route by Classification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Sheets - Save Lead": {
+      "main": [
+        []
+      ]
+    },
+    "Telegram - Hot Lead Alert": {
+      "main": [
+        []
+      ]
+    },
+    "Route by Classification": {
+      "main": [
+        [
+          {
+            "node": "Telegram - Hot Lead Alert",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Google Sheets - Save Lead",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Google Sheets - Save Lead",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Google Sheets - Save Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Receive Lead - Webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalize Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "0e6ddc00-ffe7-4ed8-a752-475b051f98de",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "d36f9582ee1dcbfaecfc2f502c3cd69683f6214781a602b2fb1e24efaa7d11cc"
+  },
+  "nodeGroups": [],
+  "id": "m87kmRSWv41Oq6WT",
+  "tags": []
+}
